@@ -512,6 +512,11 @@ function triggerContextImage(id) {
 function insertContextImage(input, id) {
   const file = input.files?.[0];
   if (!file) return;
+  insertContextImageFile(file, id, input);
+}
+
+function insertContextImageFile(file, id, inputToClear) {
+  if (!file || !file.type?.startsWith('image/')) return;
   const reader = new FileReader();
   reader.onload = () => {
     restoreContextSelection(id);
@@ -524,9 +529,55 @@ function insertContextImage(input, id) {
     }
     onContextEditorInput(editor, id);
     if (inserted) selectContextImage(inserted, id);
-    input.value = '';
+    if (inputToClear) inputToClear.value = '';
   };
   reader.readAsDataURL(file);
+}
+
+function insertPlainTextAtSelection(text, id) {
+  restoreContextSelection(id);
+  document.execCommand('insertText', false, text);
+  const editor = document.getElementById(`ctx-editor-${id}`);
+  onContextEditorInput(editor, id);
+}
+
+function handleContextPaste(event, id) {
+  event.preventDefault();
+  const clipboard = event.clipboardData;
+  if (!clipboard) return;
+
+  const imageFile = [...clipboard.files].find(file => file.type.startsWith('image/'));
+  if (imageFile) {
+    insertContextImageFile(imageFile, id);
+    return;
+  }
+
+  const html = clipboard.getData('text/html') || '';
+  const imageSources = [];
+  if (html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    template.content.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      if (src.startsWith('data:image/')) imageSources.push(src);
+    });
+  }
+
+  const text = clipboard.getData('text/plain') || '';
+  if (text) insertPlainTextAtSelection(text, id);
+
+  imageSources.forEach(src => {
+    restoreContextSelection(id);
+    document.execCommand('insertImage', false, src);
+  });
+  if (imageSources.length) {
+    const editor = document.getElementById(`ctx-editor-${id}`);
+    editor.querySelectorAll('img').forEach(img => {
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+    });
+    onContextEditorInput(editor, id);
+  }
 }
 
 function getContextIdFromEditor(editor) {
@@ -801,6 +852,7 @@ function renderEditor() {
         </div>
         <div class="ctx-editor" id="ctx-editor-${q.id}" contenteditable="true" data-placeholder="Digite o enunciado..."
           oninput="onContextEditorInput(this, ${q.id})"
+          onpaste="handleContextPaste(event, ${q.id})"
           onmouseup="saveContextSelection(${q.id})"
           onkeyup="saveContextSelection(${q.id})"
           onfocus="saveContextSelection(${q.id})">${contextToHtml(q.context)}</div>
@@ -1275,6 +1327,16 @@ async function gerarPDF(exportOptions = {}) {
       const text = node.nodeValue;
       const range = document.createRange();
       let run = null;
+      const underlineLines = [];
+      const addUnderlineSegment = (x1, x2, y) => {
+        const existing = underlineLines.find(line => Math.abs(line.y - y) < 0.7 && x1 <= line.x2 + 2 && x2 >= line.x1 - 2);
+        if (existing) {
+          existing.x1 = Math.min(existing.x1, x1);
+          existing.x2 = Math.max(existing.x2, x2);
+        } else {
+          underlineLines.push({ x1, x2, y });
+        }
+      };
       const flush = () => {
         if (!run || !run.text) return;
         const x = (run.left - rootRect.left) * scale;
@@ -1285,10 +1347,8 @@ async function gerarPDF(exportOptions = {}) {
         }
         pdf.text(run.text, x, baseline, { baseline: 'alphabetic' });
         if (underline) {
-          setColor(pdf.setDrawColor, color);
-          pdf.setLineWidth(0.18);
           const underlineY = baseline + 0.8;
-          pdf.line(x, underlineY, x + pdf.getTextWidth(run.text), underlineY);
+          addUnderlineSegment(x, x + pdf.getTextWidth(run.text), underlineY);
         }
         run = null;
       };
@@ -1299,7 +1359,13 @@ async function gerarPDF(exportOptions = {}) {
         const rect = range.getClientRects()[0];
         const ch = text[i];
         if (!rect || /\s/.test(ch)) {
-          flush();
+          if (run && /\s/.test(ch)) {
+            const sameLine = Math.abs(run.top - rect.top) < 1.5;
+            if (sameLine) run.text += ch;
+            else flush();
+          } else {
+            flush();
+          }
           continue;
         }
 
@@ -1309,6 +1375,11 @@ async function gerarPDF(exportOptions = {}) {
         run.text += ch;
       }
       flush();
+      if (underline && underlineLines.length) {
+        setColor(pdf.setDrawColor, color);
+        pdf.setLineWidth(0.18);
+        underlineLines.forEach(line => pdf.line(line.x1, line.y, line.x2, line.y));
+      }
       range.detach();
     }
 
