@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wyden — Editor de Questões ENADE</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ui-bg:    #f4f3ef;
+    --ui-white: #fff;
+    --ui-border:#dedad2;
+    --ui-muted: #9e9d97;
+    --ui-dark:  #1a1a1a;
+    --gold:     #b8960a;
+    --red:      #c0392b;
+    --radius:   6px;
+  }
+
+  body { font-family: Arial, Helvetica, sans-serif; background: var(--ui-bg); color: var(--ui-dark); min-height: 100vh; }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--ui-dark);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 54px;
+    border-bottom: 3px solid var(--gold); gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo-ui { font-family: 'Arial Black', Arial, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -1.5px; color: #fff; }
+  .brand-sub { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #888; }
+  .tab-btn {
+    background: transparent; border: 1px solid #444; color: #aaa;
+    padding: 5px 16px; border-radius: var(--radius); cursor: pointer;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+    transition: all .15s; font-family: Arial, sans-serif;
+  }
+  .tab-btn.active { background: var(--gold); border-color: var(--gold); color: #111; }
+  .tab-btn:hover:not(.active) { border-color: #777; color: #ddd; }
+  #btn-pdf {
+    background: var(--gold); border: none; color: #111;
+    padding: 6px 18px; border-radius: var(--radius); cursor: pointer;
+    font-size: 12px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;
+    font-family: Arial, sans-serif; transition: opacity .15s; margin-left: 4px;
+  }
+  #btn-pdf:disabled { opacity: .5; cursor: not-allowed; }
+  #btn-pdf:not(:disabled):hover { opacity: .85; }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; height: calc(100vh - 54px); }
+
+  /* ── EDITOR PANEL ── */
+  #panel-editor {
+    width: 520px; min-width: 420px; background: var(--ui-white);
+    border-right: 1px solid var(--ui-border);
+    overflow-y: auto; padding: 18px 16px 40px; flex-shrink: 0;
+  }
+  #panel-editor.hidden { display: none; }
+
+  #header-config {
+    background: var(--ui-bg); border: 1px solid var(--ui-border);
+    border-radius: var(--radius); padding: 10px 12px; margin-bottom: 18px;
+  }
+  #header-config label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ui-muted); margin-bottom: 5px; }
+  #header-config input {
+    width: 100%; border: 1px solid var(--ui-border); border-radius: 4px;
+    padding: 6px 10px; font-size: 13px; font-weight: 700; font-family: Arial, sans-serif;
+    background: var(--ui-white); color: var(--ui-dark); outline: none;
+  }
+  #header-config input:focus { border-color: var(--gold); }
+
+  .q-card { border: 1px solid var(--ui-border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; background: var(--ui-white); box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+  .q-card-head { background: #f0ede6; border-bottom: 1px solid var(--ui-border); display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+  .q-card-head input { flex: 1; border: none; background: transparent; font-size: 14px; font-weight: 700; font-family: Arial, sans-serif; color: var(--ui-dark); outline: none; }
+  .btn-rm-q { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px; opacity: .7; }
+  .btn-rm-q:hover { opacity: 1; }
+  .q-card-body { padding: 12px; }
+  .field-label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--ui-muted); margin-bottom: 5px; }
+  textarea.ctx { width: 100%; resize: vertical; border: 1px solid var(--ui-border); border-radius: 4px; padding: 7px 9px; font-size: 12px; line-height: 1.6; font-family: Arial, sans-serif; color: var(--ui-dark); outline: none; min-height: 110px; }
+  textarea.ctx:focus { border-color: var(--gold); }
+  .items-section { margin-top: 12px; }
+  .item-row { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .item-badge { min-width: 24px; height: 24px; background: var(--ui-dark); color: #fff; font-size: 11px; font-weight: 900; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: Arial, sans-serif; user-select: none; }
+  .item-row input { flex: 1; border: 1px solid var(--ui-border); border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: Arial, sans-serif; color: var(--ui-dark); outline: none; }
+  .item-row input:focus { border-color: var(--gold); }
+  /* Header info fields */
+  .hinfo-section { margin-bottom: 16px; }
+  .hinfo-section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ui-muted); margin-bottom: 8px; display: block;
+    border-bottom: 1px solid var(--ui-border); padding-bottom: 5px;
+  }
+  .hinfo-row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .hinfo-field { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .hinfo-field label { font-size: 10px; font-weight: 700; color: var(--ui-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .hinfo-field input {
+    border: 1px solid var(--ui-border); border-radius: 4px;
+    padding: 5px 8px; font-size: 12px; font-family: Arial, sans-serif;
+    color: var(--ui-dark); outline: none; width: 100%;
+    background: var(--ui-white);
+  }
+  .hinfo-field input:focus { border-color: var(--gold); }
+
+  #btn-add-q { width: 100%; background: none; border: 2px dashed var(--gold); border-radius: var(--radius); color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; padding: 11px; cursor: pointer; font-family: Arial, sans-serif; text-transform: uppercase; margin-top: 4px; }
+  #btn-add-q:hover { background: #fdf5d8; }
+
+  /* ── PREVIEW PANEL ── */
+  #panel-preview { flex: 1; overflow-y: auto; background: #b5b2aa; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+
+  /* ══════════════════════════════
+     PÁGINA A4 — layout natural
+     Sem altura fixa: o conteúdo
+     empurra para baixo livremente.
+     O preview mostra uma "página"
+     por questão com sombra A4.
+  ══════════════════════════════ */
+  .page-a4 {
+    width: 210mm;
+    background: #fff;
+    box-shadow: 0 4px 32px rgba(0,0,0,.28);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #121212;
+    padding: 11mm 10mm 22mm 10mm;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  /* Cabeçalho */
+  .doc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
+  .doc-header-title { font-weight: 700; font-size: 13.5pt; color: #121212; letter-spacing: -0.3px; line-height: 1; padding-top: 2px; }
+
+  /* Campos de ID */
+  .id-fields { margin-bottom: 4mm; }
+  .id-row { display: flex; gap: 4px; margin-bottom: 4px; }
+  .id-box { border: 1px solid #aaa; border-radius: 3px; padding: 5px 10px; font-size: 11pt; color: #414141; line-height: 1.4; min-height: 28px; }
+
+  /* Barra de questão */
+  .q-bar { background: #DFDFDF; border-radius: 4px; padding: 5px 10px 4px; font-weight: 700; font-size: 10pt; color: #121212; margin-bottom: 4mm; display: block; width: 100%; }
+
+  /* Enunciado */
+  .q-context { font-size: 9.5pt; line-height: 1.58; text-align: justify; color: #121212; margin-bottom: 3mm; }
+  .q-context p { margin-bottom: 2.5mm; }
+  .q-context p:last-child { margin-bottom: 0; }
+
+  /* Itens */
+  .q-items { margin-bottom: 4mm; }
+  .q-item { font-size: 9.5pt; line-height: 1.5; color: #121212; margin-bottom: 1.5mm; }
+
+  /* Linhas de resposta — altura fixa, sem flex:1 */
+  .answer-area { border: 1px solid #aaa; }
+  .answer-line { height: 6.5mm; border-bottom: 0.5px solid #ccc; }
+  .answer-line:last-child { border-bottom: none; }
+
+  /* Rodapé */
+  .doc-footer { margin-top: 4mm; }
+  .footer-line { width: 100%; height: 1px; background: #414141; margin-bottom: 2mm; }
+  .footer-text { text-align: right; font-size: 8pt; color: #414141; }
+  .footer-text strong { font-weight: 700; }
+
+  /* Aviso de overflow */
+  .overflow-warn { margin-top: 3mm; background: #fff3cd; border: 1px solid #f0ad4e; border-radius: 4px; padding: 4px 8px; font-size: 8pt; color: #856404; }
+
+  /* scrollbar */
+  #panel-editor::-webkit-scrollbar, #panel-preview::-webkit-scrollbar { width: 5px; }
+  #panel-editor::-webkit-scrollbar-thumb, #panel-preview::-webkit-scrollbar-thumb { background: #d0cdc7; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="brand">
+    <span class="logo-ui">wyden</span>
+    <span class="brand-sub">Editor de Questões</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="tab-btn active" id="tab-editor" onclick="setTab('editor')">✏ Editor</button>
+    <button class="tab-btn" id="tab-preview" onclick="setTab('preview')">◎ Preview</button>
+    <button id="btn-pdf" onclick="gerarPDF()">⬇ Gerar PDF</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="panel-editor">
+    <div id="header-config">
+      <label>Título do cabeçalho</label>
+      <input type="text" id="input-header" value="QUESTÃO ENADE" oninput="renderPreview()">
+    </div>
+
+    <div class="hinfo-section">
+      <span class="hinfo-section-title">Dados do cabeçalho</span>
+      <div class="hinfo-row">
+        <div class="hinfo-field" style="flex:2;">
+          <label>Nome</label>
+          <input type="text" id="hi-nome" placeholder="Nome do aluno" oninput="renderPreview()">
+        </div>
+        <div class="hinfo-field" style="flex:1;">
+          <label>Matrícula</label>
+          <input type="text" id="hi-matricula" placeholder="Matrícula" oninput="renderPreview()">
+        </div>
+      </div>
+      <div class="hinfo-row">
+        <div class="hinfo-field" style="flex:2;">
+          <label>Disciplina</label>
+          <input type="text" id="hi-disciplina" placeholder="Disciplina" oninput="renderPreview()">
+        </div>
+        <div class="hinfo-field" style="flex:1;">
+          <label>Prof.</label>
+          <input type="text" id="hi-prof" placeholder="Professor(a)" oninput="renderPreview()">
+        </div>
+      </div>
+      <div class="hinfo-row">
+        <div class="hinfo-field" style="flex:1.2;">
+          <label>Unid.</label>
+          <input type="text" id="hi-unid" placeholder="Unidade" oninput="renderPreview()">
+        </div>
+        <div class="hinfo-field" style="flex:0.8;">
+          <label>Tur.</label>
+          <input type="text" id="hi-tur" placeholder="Turma" oninput="renderPreview()">
+        </div>
+        <div class="hinfo-field" style="flex:0.8;">
+          <label>Data</label>
+          <input type="date" id="hi-data" oninput="renderPreview()">
+        </div>
+      </div>
+    </div>
+
+    <div id="questions-list"></div>
+    <button id="btn-add-q" onclick="addQuestion()">+ Adicionar questão</button>
+  </div>
+
+  <div id="panel-preview">
+    <div id="pages-container"></div>
+  </div>
+</div>
+
+<script>
+/* ── Logo Wyden SVG (paths extraídos do .docx) ── */
+const WYDEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1395730 458470" width="110" height="36" style="display:block;flex-shrink:0;">
+  <path fill="#000" d="
+    M883941,133749 L825696,133749 L825696,0 L883941,0 Z
+    M743718,328984 L701516,320304 L668618,295948 L647247,258448 L639630,210331
+    L647247,162213 L668618,124715 L701516,100362 L743718,91683 L768510,94540
+    L790774,102806 L810004,116028 L825696,133749 L883941,133749 L883941,142915
+    L762056,142915 L736498,147836 L716551,161657 L703581,182961 L698955,210331
+    L703581,237703 L716551,259006 L736498,272827 L762056,277748 L883941,277748
+    L883941,282603 L828393,282603 L813267,302134 L793539,316713 L770070,325832 Z
+    M883941,277748 L762056,277748 L787613,272827 L807559,259006 L820529,237703
+    L825156,210331 L820529,182961 L807559,161657 L787613,147836 L762056,142915
+    L883941,142915 Z
+    M883941,323590 L833248,323590 L828393,282603 L883941,282603 Z
+    M335421,277748 L250245,277748 L265193,275380 L276399,268512 L284369,257497
+    L289608,242690 L310109,156936 L320816,128084 L336734,107726 L357810,95660
+    L383994,91683 L412106,96233 L432938,109480 L445882,130817 L447750,142915
+    L374823,142915 L371047,146152 L368354,156936 L346780,248086 Z
+    M87368,328984 L50282,322781 L22853,305251 L5839,278015 L0,242690 L0,97073
+    L58241,97073 L58241,242690 L60352,257497 L60449,258178 L67006,269117
+    L77810,275607 L92758,277748 L335421,277748 L335319,278015 L335215,278287
+    L167723,278287 L155549,300087 L137861,315973 L115016,325689 Z
+    M250245,277748 L92758,277748 L109900,274705 L123097,264331 L133259,244755
+    L141298,214108 L164490,97073 L215188,97073 L215188,242690 L217520,257497
+    L217556,257725 L224297,268512 L224424,268714 L235314,275380 L234948,275380 Z
+    M597755,272352 L496709,272352 L522994,265932 L540330,244444 L549878,204551
+    L552802,142915 L552802,97073 L611047,97073 L610934,146152 L609054,199961
+    L602890,250610 Z
+    M483227,323590 L445007,317217 L445239,317217 L416620,298915 L398435,269438
+    L392082,229748 L392082,147231 L388306,142915 L447750,142915 L450332,159639
+    L450332,229748 L453603,248086 L453710,248691 L463206,261971 L477859,269791
+    L496709,272352 L597755,272352 L592276,295546 L585851,312260 L527995,312260
+    L518875,317217 L508442,320757 L497153,322781 L498490,322781 Z
+    M250245,328984 L220589,325689 L197052,315973 L179480,300087 L167723,278287
+    L335215,278287 L332530,285298 L311252,310377 L283605,324534 Z
+    M462731,458417 L429297,412575 L461705,390379 L488754,366464 L510750,340525
+    L527995,312260 L585851,312260 L576935,335452 L556588,371009 L530957,402900
+    L499764,431809 Z
+    M1036029,328984 L987121,320388 L948932,296218 L924090,258903 L915226,210870
+    L923812,162898 L947920,125188 L985072,100523 L1032791,91683 L1078366,99764
+    L1113423,122761 L1124330,140218 L1032791,140218 L1012030,143395 L995312,152690
+    L983042,167751 L975626,188222 L1140899,188222 L1143897,206016 L1143787,211950
+    L1143424,218287 L1142757,224826 L1141734,231362 L974011,231362 L981046,251378
+    L994301,266489 L1012916,276037 L1036029,279366 L1118877,279366 L1129335,293928
+    L1110357,308732 L1087940,319747 L1062895,326615 Z
+    M1140899,188222 L1087810,188222 L1082245,168435 L1070816,153299 L1054129,143623
+    L1032791,140218 L1124330,140218 L1135941,158802 Z
+    M1118877,279366 L1036029,279366 L1053136,277781 L1070142,273163 L1086542,265712
+    L1101831,255634 Z
+    M1381588,134827 L1230186,134827 L1244606,116483 L1262615,102941 L1283961,94557
+    L1308392,91683 L1344484,98424 L1371827,117704 Z
+    M1233418,323590 L1175176,323590 L1175176,97073 L1225865,97073 L1230186,134827
+    L1381588,134827 L1386198,142915 L1288428,142915 L1265502,147617 L1248185,161118
+    L1237236,182506 L1233418,210870 Z
+    M1395216,323590 L1336975,323590 L1336975,195235 L1333562,173406 L1323828,156938
+    L1308531,146538 L1288428,142915 L1386198,142915 L1389159,148108 L1395216,188222 Z
+  "/>
+</svg>`;
+
+const ANSWER_LINES = 22;
+const LABELS = ['a', 'b'];
+
+let questions = [
+  {
+    id: 1,
+    title: 'Questão 1',
+    context: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n\nExcepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Considere a seguinte situação hipotética e faça o que se pede nos itens a seguir.',
+    items: [
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+      'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+    ]
+  },
+  {
+    id: 2,
+    title: 'Questão 2',
+    context: 'Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur.\n\nAt vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident. Considere a seguinte situação hipotética e faça o que se pede nos itens a seguir.',
+    items: [
+      'Ut labore et dolore magnam aliquam quaerat voluptatem.',
+      'Quis autem vel eum iure reprehenderit qui voluptate velit.'
+    ]
+  }
+];
+
+let nextId = 3;
+
+/* ── Helpers ── */
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Tab switching ── */
+function setTab(tab) {
+  document.getElementById('panel-editor').classList.toggle('hidden', tab !== 'editor');
+  document.getElementById('tab-editor').classList.toggle('active', tab === 'editor');
+  document.getElementById('tab-preview').classList.toggle('active', tab === 'preview');
+}
+
+/* ── Question management ── */
+function addQuestion() {
+  questions.push({ id: nextId++, title: `Questão ${questions.length + 1}`, context: '', items: ['', ''] });
+  render();
+}
+function removeQuestion(id) {
+  if (questions.length === 1) return alert('A prova precisa de ao menos uma questão.');
+  questions = questions.filter(q => q.id !== id);
+  render();
+}
+function onTitleChange(id, val)    { questions.find(q => q.id === id).title = val;       renderPreview(); }
+function onContextChange(id, val)  { questions.find(q => q.id === id).context = val;     renderPreview(); }
+function onItemChange(qId, i, val) { questions.find(q => q.id === qId).items[i] = val;   renderPreview(); }
+
+/* ── Render editor panel ── */
+function renderEditor() {
+  document.getElementById('questions-list').innerHTML = questions.map(q => `
+    <div class="q-card">
+      <div class="q-card-head">
+        <input type="text" value="${escHtml(q.title)}" oninput="onTitleChange(${q.id}, this.value)">
+        <button class="btn-rm-q" onclick="removeQuestion(${q.id})">×</button>
+      </div>
+      <div class="q-card-body">
+        <label class="field-label">Contexto / Enunciado</label>
+        <textarea class="ctx" rows="7" oninput="onContextChange(${q.id}, this.value)">${escHtml(q.context)}</textarea>
+        <div class="items-section">
+          <label class="field-label" style="margin-top:10px;">Itens da questão</label>
+          ${q.items.map((item, ii) => `
+            <div class="item-row">
+              <span class="item-badge">${LABELS[ii].toUpperCase()}</span>
+              <input type="text" value="${escHtml(item)}" placeholder="Texto do item ${LABELS[ii].toUpperCase()}" oninput="onItemChange(${q.id}, ${ii}, this.value)">
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ── Read header info fields ── */
+function getHeaderInfo() {
+  const v = (id) => document.getElementById(id)?.value || '';
+  const rawDate = v('hi-data');
+  let dateStr = '';
+  if (rawDate) {
+    const [y, m, d] = rawDate.split('-');
+    dateStr = `${d}/${m}/${y}`;
+  }
+  return {
+    nome:       v('hi-nome'),
+    matricula:  v('hi-matricula'),
+    disciplina: v('hi-disciplina'),
+    prof:       v('hi-prof'),
+    unid:       v('hi-unid'),
+    tur:        v('hi-tur'),
+    data:       dateStr,
+  };
+}
+
+/* ── Build page HTML (shared between preview and PDF) ── */
+function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
+  const paras = q.context.split('\n\n').filter(p => p.trim());
+  const parasHtml = paras.length
+    ? paras.map(p => `<p>${escHtml(p)}</p>`).join('')
+    : (isPreview ? '<p style="color:#bbb;font-style:italic;">Nenhum contexto inserido.</p>' : '');
+
+  const itemsHtml = q.items.map((item, ii) =>
+    `<div class="q-item">${LABELS[ii]}) ${escHtml(item)}</div>`
+  ).join('');
+
+  const linesHtml = Array(ANSWER_LINES).fill(0)
+    .map(() => `<div class="answer-line"></div>`)
+    .join('');
+
+  const idBoxStyle = 'border:1px solid #aaa;border-radius:3px;padding:5px 10px;font-size:11pt;color:#414141;line-height:1.4;min-height:28px;';
+
+  return `
+    <div class="doc-top">
+      ${WYDEN_SVG}
+      <span class="doc-header-title">${escHtml(headerLabel)}</span>
+    </div>
+    <div class="id-fields">
+      <div class="id-row">
+        <span class="id-box" style="flex:2;${idBoxStyle}">Nome: <span style="font-weight:400;">${escHtml(hi.nome)}</span></span>
+        <span class="id-box" style="flex:1;${idBoxStyle}">Matrícula: <span style="font-weight:400;">${escHtml(hi.matricula)}</span></span>
+      </div>
+      <div class="id-row">
+        <span class="id-box" style="flex:2;${idBoxStyle}">Disciplina: <span style="font-weight:400;">${escHtml(hi.disciplina)}</span></span>
+        <span class="id-box" style="flex:1;${idBoxStyle}">Prof.: <span style="font-weight:400;">${escHtml(hi.prof)}</span></span>
+      </div>
+      <div class="id-row">
+        <span class="id-box" style="flex:1.2;${idBoxStyle}">Unid.: <span style="font-weight:400;">${escHtml(hi.unid)}</span></span>
+        <span class="id-box" style="flex:0.8;${idBoxStyle}">Tur.: <span style="font-weight:400;">${escHtml(hi.tur)}</span></span>
+        <span class="id-box" style="flex:0.8;${idBoxStyle}">Data: <span style="font-weight:400;">${escHtml(hi.data)}</span></span>
+      </div>
+    </div>
+    <div class="q-bar">${escHtml(q.title)}</div>
+    <div class="q-context">${parasHtml}</div>
+    <div class="q-items">${itemsHtml}</div>
+    <div class="answer-area">${linesHtml}</div>
+    ${isPreview ? `
+    <div class="doc-footer">
+      <div class="footer-line"></div>
+      <div class="footer-text">Página <strong>${qi + 1}</strong> de ${total}</div>
+    </div>` : ''}
+  `;
+}
+
+/* ── Render preview ── */
+function renderPreview() {
+  const headerLabel = document.getElementById('input-header').value;
+  const total = questions.length;
+  const hi = getHeaderInfo();
+  const container = document.getElementById('pages-container');
+  container.style.cssText = 'display:flex;flex-direction:column;gap:28px;align-items:center;';
+
+  container.innerHTML = questions.map((q, qi) =>
+    `<div class="page-a4" id="preview-page-${qi}">${buildPageHTML(q, qi, total, headerLabel, true, hi)}</div>`
+  ).join('');
+}
+
+/* ── Gerar PDF com jsPDF + html2canvas ── */
+async function gerarPDF() {
+  const btn = document.getElementById('btn-pdf');
+  btn.textContent = '⏳ Gerando...';
+  btn.disabled = true;
+
+  const { jsPDF } = window.jspdf;
+  const headerLabel = document.getElementById('input-header').value;
+
+  // Margem interna nas quebras (px no canvas @scale2 → equivale a ~10mm)
+  const MARGIN_PX = 76; // px no canvas (scale=2), ~10mm
+  const PAGE_W = 210, PAGE_H = 297;
+  const SCALE = 2;
+  // Altura útil por fatia em px do canvas (descontando margens sup+inf)
+  // PAGE_H mm em px@scale2 = 297/210 * 794 * 2 ≈ 2245px; removemos MARGIN_PX*2
+  const PAGE_PX = Math.round((PAGE_H / PAGE_W) * 794 * SCALE);
+  const SLICE_PX = PAGE_PX - MARGIN_PX * 2; // área útil por página
+
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;background:#fff;';
+  document.body.appendChild(offscreen);
+
+  // Passa 1 para total inicialmente; depois corrigimos numeração
+  // Primeiro: renderiza todos os canvases e calcula quantas páginas PDF cada questão gera
+  const canvases = [];
+  try {
+    for (let qi = 0; qi < questions.length; qi++) {
+      const q = questions[qi];
+      const pageDiv = document.createElement('div');
+      pageDiv.style.cssText = `width:794px;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#121212;padding:42px 38px 83px 38px;display:flex;flex-direction:column;flex-shrink:0;box-sizing:border-box;`;
+      // Renderiza com total=1 temporariamente; ajustamos depois
+      const hi = getHeaderInfo();
+      pageDiv.innerHTML = buildPageHTML(q, qi, 1, headerLabel, false, hi);
+      offscreen.appendChild(pageDiv);
+      await new Promise(r => setTimeout(r, 100));
+      const canvas = await html2canvas(pageDiv, {
+        scale: SCALE, useCORS: true, backgroundColor: '#ffffff',
+        width: pageDiv.offsetWidth, height: pageDiv.offsetHeight,
+        windowWidth: pageDiv.offsetWidth,
+      });
+      canvases.push(canvas);
+      offscreen.removeChild(pageDiv);
+    }
+  } catch(err) {
+    alert('Erro ao renderizar: ' + err.message);
+    document.body.removeChild(offscreen);
+    btn.textContent = '⬇ Gerar PDF'; btn.disabled = false;
+    return;
+  }
+
+  // Altura de uma linha de resposta em px no canvas (6.5mm * scale * 794/210)
+  const LINE_MM = 6.5;
+  const LINE_PX = Math.round(LINE_MM * SCALE * 794 / PAGE_W); // ~24px @scale2
+
+  // Mínimo de conteúdo para valer uma página extra (~30mm em px)
+  const MIN_SLICE_PX = Math.round(30 * SCALE * 794 / PAGE_W);
+
+  // Calcula pontos de corte alinhados às linhas, evitando fatias minúsculas
+  function calcSlicePoints(canvasH) {
+    if (canvasH <= PAGE_PX + MIN_SLICE_PX) return [canvasH]; // cabe em uma página (com folga)
+    const points = [];
+    let y = 0;
+    while (y < canvasH) {
+      let end = y + SLICE_PX + (y === 0 ? MARGIN_PX : 0);
+      if (end >= canvasH) { points.push(canvasH); break; }
+      // Se o que sobra após este corte for menor que MIN_SLICE_PX, inclui tudo nesta fatia
+      const remaining = canvasH - end;
+      if (remaining < MIN_SLICE_PX) { points.push(canvasH); break; }
+      // Recua até múltiplo de LINE_PX para não cortar linha pela metade
+      const overshoot = end % LINE_PX;
+      if (overshoot > 0) end -= overshoot;
+      points.push(end);
+      y = end;
+    }
+    return points;
+  }
+
+  // Calcula total real de páginas PDF
+  let totalPdfPages = 0;
+  const slicePointsList = canvases.map(canvas => {
+    const pts = calcSlicePoints(canvas.height);
+    totalPdfPages += pts.length;
+    return pts;
+  });
+
+  // Gera o PDF — jsPDF já cria a primeira página automaticamente;
+  // NÃO chamamos addPage() para a primeira questão/fatia.
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let currentPdfPage = 0;
+
+  try {
+    for (let qi = 0; qi < questions.length; qi++) {
+      const canvas = canvases[qi];
+      const slicePoints = slicePointsList[qi];
+
+      let yStart = 0;
+      for (let s = 0; s < slicePoints.length; s++) {
+        const yEnd   = slicePoints[s];
+        const isFirst = s === 0;
+        const isLast  = s === slicePoints.length - 1;
+
+        currentPdfPage++;
+        // Só chama addPage a partir da segunda página (jsPDF já tem 1 página)
+        if (currentPdfPage > 1) pdf.addPage();
+
+        const topMargin    = isFirst ? 0 : MARGIN_PX;
+        const bottomMargin = isLast  ? 0 : MARGIN_PX;
+        const srcH = yEnd - yStart;
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width  = canvas.width;
+        sliceCanvas.height = topMargin + srcH + bottomMargin;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, yStart, canvas.width, srcH, 0, topMargin, canvas.width, srcH);
+
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+        const sliceH_mm = (sliceCanvas.height / canvas.width) * PAGE_W;
+        pdf.addImage(sliceData, 'JPEG', 0, 0, PAGE_W, Math.min(sliceH_mm, PAGE_H));
+        addPageNumber(pdf, currentPdfPage, totalPdfPages, PAGE_W, PAGE_H);
+
+        yStart = yEnd;
+      }
+    }
+
+    pdf.save('prova-enade.pdf');
+  } catch (err) {
+    alert('Erro ao gerar PDF: ' + err.message);
+    console.error(err);
+  } finally {
+    document.body.removeChild(offscreen);
+    btn.textContent = '⬇ Gerar PDF';
+    btn.disabled = false;
+  }
+}
+
+/* Escreve o número da página no rodapé do PDF */
+function addPageNumber(pdf, current, total, pageW, pageH) {
+  pdf.setFontSize(8);
+  pdf.setTextColor(65, 65, 65);
+  const text = `Página ${current} de ${total}`;
+  const textW = pdf.getTextWidth(text);
+  pdf.text(text, pageW - 10 - textW, pageH - 6);
+}
+
+function render() { renderEditor(); renderPreview(); }
+render();
+</script>
+</body>
+</html>
