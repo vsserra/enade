@@ -40,14 +40,14 @@
   }
   .tab-btn.active { background: var(--gold); border-color: var(--gold); color: #111; }
   .tab-btn:hover:not(.active) { border-color: #777; color: #ddd; }
-  #btn-pdf {
+  .pdf-btn {
     background: var(--gold); border: none; color: #111;
     padding: 6px 18px; border-radius: var(--radius); cursor: pointer;
     font-size: 12px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;
     font-family: Arial, sans-serif; transition: opacity .15s; margin-left: 4px;
   }
-  #btn-pdf:disabled { opacity: .5; cursor: not-allowed; }
-  #btn-pdf:not(:disabled):hover { opacity: .85; }
+  .pdf-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .pdf-btn:not(:disabled):hover { opacity: .85; }
 
   /* ── LAYOUT ── */
   #app { display: flex; height: calc(100vh - 54px); }
@@ -103,6 +103,19 @@
     background: var(--ui-white);
   }
   .hinfo-field input:focus { border-color: var(--gold); }
+  .hinfo-field input:disabled {
+    background: #f0ede6;
+    color: var(--ui-muted);
+    cursor: not-allowed;
+  }
+  .students-box {
+    width: 100%; resize: vertical; border: 1px solid var(--ui-border); border-radius: 4px;
+    padding: 7px 9px; font-size: 12px; line-height: 1.45; font-family: Arial, sans-serif;
+    color: var(--ui-dark); outline: none; min-height: 92px; background: var(--ui-white);
+  }
+  .students-box:focus { border-color: var(--gold); }
+  .students-hint { font-size: 10px; line-height: 1.35; color: var(--ui-muted); margin-top: 5px; }
+  .students-count { font-size: 11px; font-weight: 700; color: var(--ui-dark); margin-top: 7px; }
 
   #btn-add-q { width: 100%; background: none; border: 2px dashed var(--gold); border-radius: var(--radius); color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; padding: 11px; cursor: pointer; font-family: Arial, sans-serif; text-transform: uppercase; margin-top: 4px; }
   #btn-add-q:hover { background: #fdf5d8; }
@@ -123,7 +136,7 @@
     box-shadow: 0 4px 32px rgba(0,0,0,.28);
     font-family: Arial, Helvetica, sans-serif;
     font-size: 10pt;
-    color: #121212;
+    color: #000;
     padding: 11mm 10mm 22mm 10mm;
     display: flex;
     flex-direction: column;
@@ -132,34 +145,34 @@
 
   /* Cabeçalho */
   .doc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; }
-  .doc-header-title { font-weight: 700; font-size: 13.5pt; color: #121212; letter-spacing: -0.3px; line-height: 1; padding-top: 2px; }
+  .doc-header-title { font-weight: 700; font-size: 13.5pt; color: #000; letter-spacing: -0.3px; line-height: 1; padding-top: 2px; }
 
   /* Campos de ID */
   .id-fields { margin-bottom: 4mm; }
   .id-row { display: flex; gap: 4px; margin-bottom: 4px; }
-  .id-box { border: 1.5px solid #555; border-radius: 3px; padding: 5px 10px; font-size: 11pt; color: #414141; line-height: 1.4; min-height: 28px; }
+  .id-box { border: 0.75px solid #000; border-radius: 3px; padding: 5px 10px; font-size: 11pt; color: #000; line-height: 1.4; min-height: 28px; }
 
   /* Barra de questão */
-  .q-bar { background: #DFDFDF; border-radius: 4px; padding: 5px 10px 4px; font-weight: 700; font-size: 10pt; color: #121212; margin-bottom: 4mm; display: block; width: 100%; }
+  .q-bar { background: #DFDFDF; border-radius: 4px; padding: 5px 10px 4px; font-weight: 700; font-size: 10pt; color: #000; margin-bottom: 4mm; display: block; width: 100%; }
 
   /* Enunciado */
-  .q-context { font-size: 9.5pt; line-height: 1.58; text-align: justify; color: #121212; margin-bottom: 3mm; }
+  .q-context { font-size: 9.5pt; line-height: 1.58; text-align: justify; color: #000; margin-bottom: 3mm; }
   .q-context p { margin-bottom: 2.5mm; }
   .q-context p:last-child { margin-bottom: 0; }
 
   /* Itens */
   .q-items { margin-bottom: 4mm; }
-  .q-item { font-size: 9.5pt; line-height: 1.5; color: #121212; margin-bottom: 1.5mm; }
+  .q-item { font-size: 9.5pt; line-height: 1.5; color: #000; margin-bottom: 1.5mm; }
 
   /* Linhas de resposta — altura fixa, sem flex:1 */
-  .answer-area { border: 1px solid #aaa; }
-  .answer-line { height: 6.5mm; border-bottom: 0.5px solid #ccc; }
+  .answer-area { border: 0.75px solid #000; }
+  .answer-line { height: 6.5mm; border-bottom: 0.75px solid #000; }
   .answer-line:last-child { border-bottom: none; }
 
   /* Rodapé */
   .doc-footer { margin-top: 4mm; }
-  .footer-line { width: 100%; height: 1px; background: #414141; margin-bottom: 2mm; }
-  .footer-text { text-align: right; font-size: 8pt; color: #414141; }
+  .footer-line { width: 100%; height: 1px; background: #000; margin-bottom: 2mm; }
+  .footer-text { display: flex; justify-content: space-between; gap: 8mm; font-size: 8pt; color: #000; }
   .footer-text strong { font-weight: 700; }
 
   /* Aviso de overflow */
@@ -180,7 +193,8 @@
   <div style="display:flex;gap:8px;align-items:center;">
     <button class="tab-btn active" id="tab-editor" onclick="setTab('editor')">✏ Editor</button>
     <button class="tab-btn" id="tab-preview" onclick="setTab('preview')">◎ Preview</button>
-    <button id="btn-pdf" onclick="gerarPDF()">⬇ Gerar PDF</button>
+    <button class="pdf-btn" id="btn-pdf" onclick="gerarPDFModelo()">⬇ Prova sem dados</button>
+    <button class="pdf-btn" id="btn-pdf-students" onclick="gerarPDFAlunos()">⬇ Provas dos alunos</button>
   </div>
 </div>
 
@@ -227,6 +241,13 @@
           <input type="date" id="hi-data" oninput="renderPreview()">
         </div>
       </div>
+    </div>
+
+    <div class="hinfo-section">
+      <span class="hinfo-section-title">Lista de alunos</span>
+      <textarea class="students-box" id="students-list" placeholder="Um aluno por linha: Nome; Matrícula&#10;Ex.: Ana Silva; 2024001" oninput="onStudentsListChange()" onchange="onStudentsListChange()" onkeyup="onStudentsListChange()"></textarea>
+      <div class="students-hint">Use um aluno por linha. Aceita separação por ponto e vírgula, vírgula, tabulação ou traço.</div>
+      <div class="students-count" id="students-count">0 alunos na lista</div>
     </div>
 
     <div id="questions-list"></div>
@@ -395,12 +416,59 @@ function getHeaderInfo() {
   };
 }
 
+function formatStudentLabel(hi) {
+  const nome = (hi?.nome || '').trim();
+  const matricula = (hi?.matricula || '').trim();
+  if (nome && matricula) return `${nome} - Matrícula: ${matricula}`;
+  if (nome) return nome;
+  if (matricula) return `Matrícula: ${matricula}`;
+  return '';
+}
+
+function parseStudentsList() {
+  const raw = document.getElementById('students-list')?.value || '';
+  return raw.split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const parts = line.split(/\s*(?:;|\t|,|\s+-\s+)\s*/).filter(Boolean);
+      if (parts.length === 1) return { nome: parts[0], matricula: '' };
+      return { nome: parts[0], matricula: parts.slice(1).join(' ') };
+    });
+}
+
+function updateStudentFieldLocks() {
+  const studentsCount = parseStudentsList().length;
+  const hasStudents = studentsCount > 0;
+  ['hi-nome', 'hi-matricula'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) field.disabled = hasStudents;
+  });
+
+  const countEl = document.getElementById('students-count');
+  if (countEl) {
+    countEl.textContent = studentsCount === 1 ? '1 aluno na lista' : `${studentsCount} alunos na lista`;
+  }
+
+  const studentsBtn = document.getElementById('btn-pdf-students');
+  if (studentsBtn && !studentsBtn.disabled) {
+    studentsBtn.textContent = studentsCount
+      ? `⬇ Provas dos alunos (${studentsCount})`
+      : '⬇ Provas dos alunos';
+  }
+}
+
+function onStudentsListChange() {
+  updateStudentFieldLocks();
+  renderPreview();
+}
+
 /* ── Build page HTML (shared between preview and PDF) ── */
 function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
   const paras = q.context.split('\n\n').filter(p => p.trim());
   const parasHtml = paras.length
     ? paras.map(p => `<p>${escHtml(p)}</p>`).join('')
-    : (isPreview ? '<p style="color:#bbb;font-style:italic;">Nenhum contexto inserido.</p>' : '');
+    : (isPreview ? '<p style="color:#000;font-style:italic;">Nenhum contexto inserido.</p>' : '');
 
   const itemsHtml = q.items.map((item, ii) =>
     `<div class="q-item">${LABELS[ii]}) ${escHtml(item)}</div>`
@@ -410,9 +478,9 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
     .map(() => `<div class="answer-line"></div>`)
     .join('');
 
-  const idBoxStyle = 'border:1.5px solid #555;border-radius:3px;padding:5px 10px;font-size:11pt;color:#414141;line-height:1.4;min-height:28px;';
-
-  return `
+  const idBoxStyle = 'border:0.75px solid #000;border-radius:3px;padding:5px 10px;font-size:11pt;color:#000;line-height:1.4;min-height:28px;';
+  const studentLabel = formatStudentLabel(hi);
+  const headerHtml = qi === 0 ? `
     <div class="doc-top">
       ${WYDEN_SVG}
       <span class="doc-header-title">${escHtml(headerLabel)}</span>
@@ -432,6 +500,10 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
         <span class="id-box" style="flex:0.8;${idBoxStyle}">Data: <span style="font-weight:400;">${escHtml(hi.data)}</span></span>
       </div>
     </div>
+  ` : '';
+
+  return `
+    ${headerHtml}
     <div class="q-bar">${escHtml(q.title)}</div>
     <div class="q-context">${parasHtml}</div>
     <div class="q-items">${itemsHtml}</div>
@@ -439,7 +511,10 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
     ${isPreview ? `
     <div class="doc-footer">
       <div class="footer-line"></div>
-      <div class="footer-text">Página <strong>${qi + 1}</strong> de ${total}</div>
+      <div class="footer-text">
+        <span>${escHtml(studentLabel)}</span>
+        <span>Página <strong>${qi + 1}</strong> de ${total}</span>
+      </div>
     </div>` : ''}
   `;
 }
@@ -458,16 +533,426 @@ function renderPreview() {
 }
 
 /* ════════════════════════════════════════════════════════
-   GERAR PDF — jsPDF puro (texto vetorial, sem imagem)
-   Todas as dimensões em mm. Página A4: 210 × 297 mm.
+   GERAR PDF — renderiza o mesmo DOM do preview:
+   caixas/linhas vetoriais, texto real e imagens isoladas.
+   A página inteira nunca é convertida em imagem.
 ════════════════════════════════════════════════════════ */
-function gerarPDF() {
-  const btn = document.getElementById('btn-pdf');
+async function gerarPDF(exportOptions = {}) {
+  const btn = exportOptions.button || document.getElementById('btn-pdf');
+  const btnOriginalText = btn.textContent;
+  const allPdfButtons = [...document.querySelectorAll('.pdf-btn')];
   btn.textContent = '⏳ Gerando...';
-  btn.disabled = true;
+  allPdfButtons.forEach(button => button.disabled = true);
 
   try {
     const { jsPDF } = window.jspdf;
+    {
+    const headerLabel = document.getElementById('input-header').value;
+    const baseHi = getHeaderInfo();
+    const copies = exportOptions.copies || [baseHi];
+    const filename = exportOptions.filename || 'prova-enade.pdf';
+
+    const exportRoot = document.createElement('div');
+    exportRoot.style.cssText = 'position:absolute;left:-100000px;top:0;display:flex;flex-direction:column;gap:0;align-items:center;background:#fff;';
+    exportRoot.innerHTML = copies.map((copyHi, copyIndex) => {
+      const hi = { ...baseHi, ...copyHi };
+      const studentLabel = escHtml(formatStudentLabel(hi));
+      return questions.map((q, qi) =>
+        `<div class="page-a4" data-copy-index="${copyIndex}" data-student-label="${studentLabel}" id="export-page-${copyIndex}-${qi}">${buildPageHTML(q, qi, questions.length, headerLabel, false, hi)}</div>`
+      ).join('');
+    }).join('');
+    document.body.appendChild(exportRoot);
+
+    if (document.fonts?.ready) await document.fonts.ready;
+
+    const PAGE_W = 210;
+    const PAGE_H = 297;
+    const CONTINUATION_TOP_MM = 11;
+    const PAGE_BOTTOM_SAFE_MM = 18;
+    const FOOTER_Y_MM = 283;
+    const SIDE_MARGIN_MM = 10;
+    const PDF_EPS_MM = 0.2;
+    const previewPages = [...exportRoot.querySelectorAll('.page-a4')];
+    if (!previewPages.length) throw new Error('Nenhuma página encontrada no preview.');
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const imageCache = new WeakMap();
+    const px = (value) => Number.parseFloat(value) || 0;
+    const toPt = (pxValue) => pxValue * 0.75;
+    const rgba = (value) => {
+      const match = String(value || '').match(/rgba?\(([^)]+)\)/i);
+      if (!match) return null;
+      const parts = match[1].split(',').map(part => Number.parseFloat(part));
+      const alpha = parts.length > 3 ? parts[3] : 1;
+      if (alpha === 0 || parts.slice(0, 3).some(Number.isNaN)) return null;
+      return { r: parts[0], g: parts[1], b: parts[2], a: alpha };
+    };
+    const setColor = (setter, color) => {
+      if (color) setter.call(pdf, color.r, color.g, color.b);
+    };
+    const isVisible = (el) => {
+      const style = getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
+    };
+
+    function shouldSkipPdfElement(el) {
+      return el.closest?.('.doc-footer');
+    }
+
+    function coords(rect, rootRect, scale, yOffsetPx, yShiftMm = 0) {
+      return {
+        x: (rect.left - rootRect.left) * scale,
+        y: (rect.top - rootRect.top - yOffsetPx) * scale + yShiftMm,
+        w: rect.width * scale,
+        h: rect.height * scale,
+      };
+    }
+
+    function fontStyle(style) {
+      const weight = Number.parseInt(style.fontWeight, 10);
+      const bold = style.fontWeight === 'bold' || weight >= 600;
+      const italic = style.fontStyle === 'italic' || style.fontStyle === 'oblique';
+      if (bold && italic) return 'bolditalic';
+      if (bold) return 'bold';
+      if (italic) return 'italic';
+      return 'normal';
+    }
+
+    function drawBorderLine(x1, y1, x2, y2, color, width) {
+      if (!color || width <= 0) return;
+      setColor(pdf.setDrawColor, color);
+      pdf.setLineWidth(width);
+      pdf.line(x1, y1, x2, y2);
+    }
+
+    function drawBox(el, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm) {
+      if (!isVisible(el) || shouldSkipPdfElement(el)) return;
+      if (el.classList?.contains('page-a4')) return;
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const style = getComputedStyle(el);
+      const pos = coords(rect, rootRect, scale, yOffsetPx, yShiftMm);
+      const visibleTop = Math.max(pos.y, yShiftMm);
+      const visibleBottom = Math.min(pos.y + pos.h, contentBottomMm);
+      if (visibleBottom <= visibleTop) return;
+
+      const bg = rgba(style.backgroundColor);
+      const radius = px(style.borderTopLeftRadius) * scale;
+
+      if (bg) {
+        setColor(pdf.setFillColor, bg);
+        if (pos.y >= yShiftMm && pos.y + pos.h <= contentBottomMm && radius > 0 && typeof pdf.roundedRect === 'function') {
+          pdf.roundedRect(pos.x, pos.y, pos.w, pos.h, radius, radius, 'F');
+        } else {
+          pdf.rect(pos.x, visibleTop, pos.w, visibleBottom - visibleTop, 'F');
+        }
+      }
+
+      const topW = px(style.borderTopWidth) * scale;
+      const rightW = px(style.borderRightWidth) * scale;
+      const bottomW = px(style.borderBottomWidth) * scale;
+      const leftW = px(style.borderLeftWidth) * scale;
+      const topColor = rgba(style.borderTopColor);
+      const rightColor = rgba(style.borderRightColor);
+      const bottomColor = rgba(style.borderBottomColor);
+      const leftColor = rgba(style.borderLeftColor);
+
+      if (style.borderTopStyle !== 'none' && pos.y >= yShiftMm - PDF_EPS_MM && pos.y <= contentBottomMm + PDF_EPS_MM) {
+        const y = Math.max(yShiftMm, Math.min(pos.y, contentBottomMm));
+        drawBorderLine(pos.x, y, pos.x + pos.w, y, topColor, topW);
+      }
+      if (style.borderRightStyle !== 'none') {
+        drawBorderLine(pos.x + pos.w, visibleTop, pos.x + pos.w, visibleBottom, rightColor, rightW);
+      }
+      if (style.borderBottomStyle !== 'none' && pos.y + pos.h >= yShiftMm - PDF_EPS_MM && pos.y + pos.h <= contentBottomMm + PDF_EPS_MM) {
+        const y = Math.max(yShiftMm, Math.min(pos.y + pos.h, contentBottomMm));
+        drawBorderLine(pos.x, y, pos.x + pos.w, y, bottomColor, bottomW);
+      }
+      if (style.borderLeftStyle !== 'none') {
+        drawBorderLine(pos.x, visibleTop, pos.x, visibleBottom, leftColor, leftW);
+      }
+      if (el.classList?.contains('answer-area') && pos.y < yShiftMm && pos.y + pos.h > yShiftMm) {
+        drawBorderLine(pos.x, yShiftMm, pos.x + pos.w, yShiftMm, topColor || bottomColor || leftColor, Math.max(topW, bottomW, 0.2));
+      }
+    }
+
+    function svgToPng(svgEl) {
+      if (imageCache.has(svgEl)) return imageCache.get(svgEl);
+      const promise = new Promise((resolve, reject) => {
+        const rect = svgEl.getBoundingClientRect();
+        const clone = svgEl.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', Math.max(1, Math.ceil(rect.width * 2)));
+        clone.setAttribute('height', Math.max(1, Math.ceil(rect.height * 2)));
+
+        const svgText = new XMLSerializer().serializeToString(clone);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.ceil(rect.width * 2));
+          canvas.height = Math.max(1, Math.ceil(rect.height * 2));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+      });
+      imageCache.set(svgEl, promise);
+      return promise;
+    }
+
+    function imgToDataUrl(imgEl) {
+      if (imageCache.has(imgEl)) return imageCache.get(imgEl);
+      const promise = new Promise((resolve, reject) => {
+        const finish = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = imgEl.naturalWidth || imgEl.width || 1;
+            canvas.height = imgEl.naturalHeight || imgEl.height || 1;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(imgEl, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (err) {
+            if (imgEl.src.startsWith('data:image/')) resolve(imgEl.src);
+            else reject(err);
+          }
+        };
+        if (imgEl.complete) finish();
+        else {
+          imgEl.onload = finish;
+          imgEl.onerror = reject;
+        }
+      });
+      imageCache.set(imgEl, promise);
+      return promise;
+    }
+
+    async function drawImageElement(el, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm) {
+      if (!isVisible(el) || shouldSkipPdfElement(el)) return;
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const pos = coords(rect, rootRect, scale, yOffsetPx, yShiftMm);
+      if (pos.y >= contentBottomMm || pos.y + pos.h <= yShiftMm) return;
+
+      const dataUrl = el.tagName.toLowerCase() === 'svg'
+        ? await svgToPng(el)
+        : await imgToDataUrl(el);
+      const format = dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')
+        ? 'JPEG'
+        : 'PNG';
+      pdf.addImage(dataUrl, format, pos.x, pos.y, pos.w, pos.h);
+    }
+
+    function drawTextNode(node, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm) {
+      if (!node.nodeValue || !node.nodeValue.trim()) return;
+      const parent = node.parentElement;
+      if (!parent || parent.closest('svg') || !isVisible(parent) || shouldSkipPdfElement(parent)) return;
+
+      const style = getComputedStyle(parent);
+      const color = rgba(style.color);
+      if (!color) return;
+
+      pdf.setFont('helvetica', fontStyle(style));
+      pdf.setFontSize(toPt(px(style.fontSize)));
+      setColor(pdf.setTextColor, color);
+
+      const text = node.nodeValue;
+      const range = document.createRange();
+      let run = null;
+      const flush = () => {
+        if (!run || !run.text) return;
+        const x = (run.left - rootRect.left) * scale;
+        const baseline = (run.top - rootRect.top - yOffsetPx + px(style.fontSize) * 0.78) * scale + yShiftMm;
+        if (baseline < yShiftMm || baseline > contentBottomMm) {
+          run = null;
+          return;
+        }
+        pdf.text(run.text, x, baseline, { baseline: 'alphabetic' });
+        run = null;
+      };
+
+      for (let i = 0; i < text.length; i++) {
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const rect = range.getClientRects()[0];
+        const ch = text[i];
+        if (!rect || /\s/.test(ch)) {
+          flush();
+          continue;
+        }
+
+        const sameLine = run && Math.abs(run.top - rect.top) < 1.5;
+        if (!sameLine) flush();
+        if (!run) run = { text: '', left: rect.left, top: rect.top };
+        run.text += ch;
+      }
+      flush();
+      range.detach();
+    }
+
+    async function renderPdfPage(root, yOffsetPx, yShiftMm, contentBottomMm) {
+      const rootRect = root.getBoundingClientRect();
+      const scale = PAGE_W / rootRect.width;
+
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, PAGE_W, PAGE_H, 'F');
+
+      [root, ...root.querySelectorAll('*')].forEach(el => drawBox(el, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm));
+
+      for (const el of root.querySelectorAll('svg,img')) {
+        await drawImageElement(el, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm);
+      }
+
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) drawTextNode(walker.currentNode, rootRect, scale, yOffsetPx, yShiftMm, contentBottomMm);
+    }
+
+    function drawPdfFooter(pageNum, totalPages, studentLabel = '') {
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.35);
+      pdf.line(SIDE_MARGIN_MM, FOOTER_Y_MM, PAGE_W - SIDE_MARGIN_MM, FOOTER_Y_MM);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(0, 0, 0);
+      if (studentLabel) {
+        const maxStudentW = 120;
+        const studentText = pdf.splitTextToSize(studentLabel, maxStudentW)[0];
+        pdf.text(studentText, SIDE_MARGIN_MM, FOOTER_Y_MM + 5);
+      }
+      const prefix = 'Página ';
+      const current = String(pageNum);
+      const suffix = ` de ${totalPages}`;
+      const full = prefix + current + suffix;
+      const x = PAGE_W - SIDE_MARGIN_MM - pdf.getTextWidth(full);
+      const y = FOOTER_Y_MM + 5;
+      pdf.text(prefix, x, y);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(current, x + pdf.getTextWidth(prefix), y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(suffix, x + pdf.getTextWidth(prefix + current), y);
+    }
+
+    function getVisibleContentBottomPx(root) {
+      const rootTop = root.getBoundingClientRect().top;
+      return [...root.querySelectorAll('*')].reduce((bottomPx, el) => {
+        if (!isVisible(el) || shouldSkipPdfElement(el)) return bottomPx;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return bottomPx;
+        return Math.max(bottomPx, rect.bottom - rootTop);
+      }, 0);
+    }
+
+    function hasVisibleContentInSlice(root, startPx, endPx) {
+      const rootTop = root.getBoundingClientRect().top;
+      return [...root.querySelectorAll('*')].some(el => {
+        if (!isVisible(el) || shouldSkipPdfElement(el)) return false;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const top = rect.top - rootTop;
+        const bottom = rect.bottom - rootTop;
+        return bottom > startPx + 1 && top < endPx - 1;
+      });
+    }
+
+    function getKeepTogetherIntervals(root) {
+      const rootTop = root.getBoundingClientRect().top;
+      const intervals = [];
+      const addInterval = (top, bottom) => {
+        if (bottom - top > 0.5) intervals.push({ top, bottom });
+      };
+
+      root.querySelectorAll('.answer-line, .q-bar, .id-box').forEach(el => {
+        if (!isVisible(el) || shouldSkipPdfElement(el)) return;
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        addInterval(rect.top - rootTop, rect.bottom - rootTop);
+      });
+
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node.nodeValue || !node.nodeValue.trim()) continue;
+        const parent = node.parentElement;
+        if (!parent || parent.closest('svg') || !isVisible(parent) || shouldSkipPdfElement(parent)) continue;
+
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        [...range.getClientRects()].forEach(rect => {
+          if (!rect.width || !rect.height) return;
+          addInterval(rect.top - rootTop, rect.bottom - rootTop);
+        });
+        range.detach();
+      }
+
+      return intervals
+        .sort((a, b) => a.top - b.top || a.bottom - b.bottom)
+        .reduce((merged, interval) => {
+          const last = merged[merged.length - 1];
+          if (last && interval.top < last.bottom - 0.25) {
+            last.bottom = Math.max(last.bottom, interval.bottom);
+          } else {
+            merged.push({ ...interval });
+          }
+          return merged;
+        }, []);
+    }
+
+    function snapSliceEndToLineBoundary(intervals, sliceStart, idealEnd) {
+      const minProgress = 20;
+      let end = idealEnd;
+
+      for (const interval of intervals) {
+        const cutsLine = interval.top < end - 0.5 && interval.bottom > end + 0.5;
+        if (!cutsLine) continue;
+
+        const beforeLine = interval.top;
+        if (beforeLine > sliceStart + minProgress) end = beforeLine;
+        break;
+      }
+
+      return end;
+    }
+
+    const renderJobs = [];
+    for (const root of previewPages) {
+      const rootRect = root.getBoundingClientRect();
+      const scale = PAGE_W / rootRect.width;
+      const contentBottomPx = getVisibleContentBottomPx(root);
+      const keepTogetherIntervals = getKeepTogetherIntervals(root);
+      let sliceStart = 0;
+      let slice = 0;
+
+      while (sliceStart < contentBottomPx - 1 || slice === 0) {
+        const yShiftMm = slice === 0 ? 0 : CONTINUATION_TOP_MM;
+        const contentBottomMm = PAGE_H - PAGE_BOTTOM_SAFE_MM;
+        const sliceHeightPx = (contentBottomMm - yShiftMm) / scale;
+        let sliceEnd = snapSliceEndToLineBoundary(keepTogetherIntervals, sliceStart, sliceStart + sliceHeightPx);
+        if (slice > 0 && !hasVisibleContentInSlice(root, sliceStart, sliceEnd)) {
+          sliceStart = sliceEnd;
+          slice++;
+          continue;
+        }
+
+        const actualContentBottomMm = yShiftMm + (sliceEnd - sliceStart) * scale;
+        renderJobs.push({ root, sliceStart, yShiftMm, contentBottomMm: actualContentBottomMm, studentLabel: root.dataset.studentLabel || '' });
+        sliceStart = sliceEnd;
+        slice++;
+      }
+    }
+
+    for (const [i, job] of renderJobs.entries()) {
+      if (i > 0) pdf.addPage();
+      await renderPdfPage(job.root, job.sliceStart, job.yShiftMm, job.contentBottomMm);
+      drawPdfFooter(i + 1, renderJobs.length, job.studentLabel);
+    }
+
+    exportRoot.remove();
+    pdf.save(filename);
+    return;
+    }
+
     const headerLabel = document.getElementById('input-header').value;
     const hi = getHeaderInfo();
 
@@ -497,13 +982,13 @@ function gerarPDF() {
       pdf.setLineWidth(0.3);
       pdf.rect(x, y, w, h);
       pdf.setFontSize(8);
-      pdf.setTextColor(65, 65, 65);
+      pdf.setTextColor(0, 0, 0);
       pdf.setFont('helvetica', 'bold');
       pdf.text(label, x + 2, y + 5.2);
       if (value) {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
-        pdf.setTextColor(18, 18, 18);
+        pdf.setTextColor(0, 0, 0);
         const maxW = w - pdf.getTextWidth(label) - 4;
         const val = pdf.splitTextToSize(value, maxW)[0];
         pdf.text(val, x + 2 + pdf.getTextWidth(label) + 1, y + 5.2);
@@ -539,7 +1024,7 @@ function gerarPDF() {
       pdf.roundedRect(ML, y, CW, 7, 1, 1, 'F');
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(18, 18, 18);
+      pdf.setTextColor(0, 0, 0);
       pdf.text(title, ML + 3, y + 5);
       return y + 7;
     }
@@ -560,7 +1045,7 @@ function gerarPDF() {
       pdf.line(ML, y, PW - MR, y);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(65, 65, 65);
+      pdf.setTextColor(0, 0, 0);
       const txt = `Página ${pageNum} de ${totalPages}`;
       pdf.text(txt, PW - MR - pdf.getTextWidth(txt), y + 4);
     }
@@ -652,7 +1137,7 @@ function gerarPDF() {
       drawLogo(pdf, ML, y);
       pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(18, 18, 18);
+      pdf.setTextColor(0, 0, 0);
       const titleW = pdf.getTextWidth(headerLabel);
       pdf.text(headerLabel, PW - MR - titleW, y + 7);
       y += 12;
@@ -668,7 +1153,7 @@ function gerarPDF() {
       /* — Enunciado — */
       pdf.setFontSize(FS_BODY);
       pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(18, 18, 18);
+      pdf.setTextColor(0, 0, 0);
 
       paraLines.forEach((lines, pi) => {
         // Verifica quebra de página
@@ -698,7 +1183,7 @@ function gerarPDF() {
         }
         pdf.setFontSize(FS_BODY);
         pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(18, 18, 18);
+        pdf.setTextColor(0, 0, 0);
         const fullText = `${LABELS[ii]}) ${q.items[ii]}`;
         const wrapped = pdf.splitTextToSize(fullText, CW);
         drawWrapped(pdf, wrapped, ML, y, LH_ITEM);
@@ -755,12 +1240,40 @@ function gerarPDF() {
     alert('Erro ao gerar PDF: ' + err.message);
     console.error(err);
   } finally {
-    btn.textContent = '⬇ Gerar PDF';
-    btn.disabled = false;
+    btn.textContent = btnOriginalText;
+    allPdfButtons.forEach(button => button.disabled = false);
   }
 }
 
-function render() { renderEditor(); renderPreview(); }
+function gerarPDFModelo() {
+  const hi = getHeaderInfo();
+  return gerarPDF({
+    button: document.getElementById('btn-pdf'),
+    filename: 'prova-enade-sem-dados.pdf',
+    copies: [{ ...hi, nome: '', matricula: '' }],
+  });
+}
+
+function gerarPDFAlunos() {
+  const students = parseStudentsList();
+  if (!students.length) {
+    alert('Informe ao menos um aluno na lista. Use: Nome; Matrícula');
+    return;
+  }
+
+  const baseHi = getHeaderInfo();
+  return gerarPDF({
+    button: document.getElementById('btn-pdf-students'),
+    filename: 'provas-enade-alunos.pdf',
+    copies: students.map(student => ({
+      ...baseHi,
+      nome: student.nome,
+      matricula: student.matricula,
+    })),
+  });
+}
+
+function render() { renderEditor(); renderPreview(); updateStudentFieldLocks(); }
 render();
 </script>
 </body>
