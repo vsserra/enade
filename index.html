@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wyden — Editor de Questões ENADE</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -138,7 +137,7 @@
   /* Campos de ID */
   .id-fields { margin-bottom: 4mm; }
   .id-row { display: flex; gap: 4px; margin-bottom: 4px; }
-  .id-box { border: 1px solid #aaa; border-radius: 3px; padding: 5px 10px; font-size: 11pt; color: #414141; line-height: 1.4; min-height: 28px; }
+  .id-box { border: 1.5px solid #555; border-radius: 3px; padding: 5px 10px; font-size: 11pt; color: #414141; line-height: 1.4; min-height: 28px; }
 
   /* Barra de questão */
   .q-bar { background: #DFDFDF; border-radius: 4px; padding: 5px 10px 4px; font-weight: 700; font-size: 10pt; color: #121212; margin-bottom: 4mm; display: block; width: 100%; }
@@ -411,7 +410,7 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
     .map(() => `<div class="answer-line"></div>`)
     .join('');
 
-  const idBoxStyle = 'border:1px solid #aaa;border-radius:3px;padding:5px 10px;font-size:11pt;color:#414141;line-height:1.4;min-height:28px;';
+  const idBoxStyle = 'border:1.5px solid #555;border-radius:3px;padding:5px 10px;font-size:11pt;color:#414141;line-height:1.4;min-height:28px;';
 
   return `
     <div class="doc-top">
@@ -458,150 +457,307 @@ function renderPreview() {
   ).join('');
 }
 
-/* ── Gerar PDF com jsPDF + html2canvas ── */
-async function gerarPDF() {
+/* ════════════════════════════════════════════════════════
+   GERAR PDF — jsPDF puro (texto vetorial, sem imagem)
+   Todas as dimensões em mm. Página A4: 210 × 297 mm.
+════════════════════════════════════════════════════════ */
+function gerarPDF() {
   const btn = document.getElementById('btn-pdf');
   btn.textContent = '⏳ Gerando...';
   btn.disabled = true;
 
-  const { jsPDF } = window.jspdf;
-  const headerLabel = document.getElementById('input-header').value;
-
-  // Margem interna nas quebras (px no canvas @scale2 → equivale a ~10mm)
-  const MARGIN_PX = 76; // px no canvas (scale=2), ~10mm
-  const PAGE_W = 210, PAGE_H = 297;
-  const SCALE = 2;
-  // Altura útil por fatia em px do canvas (descontando margens sup+inf)
-  // PAGE_H mm em px@scale2 = 297/210 * 794 * 2 ≈ 2245px; removemos MARGIN_PX*2
-  const PAGE_PX = Math.round((PAGE_H / PAGE_W) * 794 * SCALE);
-  const SLICE_PX = PAGE_PX - MARGIN_PX * 2; // área útil por página
-
-  const offscreen = document.createElement('div');
-  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;background:#fff;';
-  document.body.appendChild(offscreen);
-
-  // Passa 1 para total inicialmente; depois corrigimos numeração
-  // Primeiro: renderiza todos os canvases e calcula quantas páginas PDF cada questão gera
-  const canvases = [];
   try {
-    for (let qi = 0; qi < questions.length; qi++) {
-      const q = questions[qi];
-      const pageDiv = document.createElement('div');
-      pageDiv.style.cssText = `width:794px;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#121212;padding:42px 38px 83px 38px;display:flex;flex-direction:column;flex-shrink:0;box-sizing:border-box;`;
-      // Renderiza com total=1 temporariamente; ajustamos depois
-      const hi = getHeaderInfo();
-      pageDiv.innerHTML = buildPageHTML(q, qi, 1, headerLabel, false, hi);
-      offscreen.appendChild(pageDiv);
-      await new Promise(r => setTimeout(r, 100));
-      const canvas = await html2canvas(pageDiv, {
-        scale: SCALE, useCORS: true, backgroundColor: '#ffffff',
-        width: pageDiv.offsetWidth, height: pageDiv.offsetHeight,
-        windowWidth: pageDiv.offsetWidth,
-      });
-      canvases.push(canvas);
-      offscreen.removeChild(pageDiv);
+    const { jsPDF } = window.jspdf;
+    const headerLabel = document.getElementById('input-header').value;
+    const hi = getHeaderInfo();
+
+    /* ── Constantes de layout ── */
+    const PW = 210, PH = 297;          // página A4
+    const ML = 10, MR = 10;            // margens esq/dir
+    const MT = 11, MB = 14;            // margens top/bottom
+    const CW = PW - ML - MR;           // largura do conteúdo (190mm)
+    const LINE_H = 6.5;                // altura de cada linha de resposta (mm)
+    const N_LINES = 22;                // número de linhas de resposta
+    const BOX_H = 8;                   // altura das caixas de cabeçalho
+
+    /* ── Helpers de texto com quebra automática ── */
+    function wrappedText(pdf, text, x, maxW, fontSize, lineHeight) {
+      pdf.setFontSize(fontSize);
+      const lines = pdf.splitTextToSize(text, maxW);
+      return { lines, height: lines.length * lineHeight };
     }
-  } catch(err) {
-    alert('Erro ao renderizar: ' + err.message);
-    document.body.removeChild(offscreen);
-    btn.textContent = '⬇ Gerar PDF'; btn.disabled = false;
-    return;
-  }
 
-  // Altura de uma linha de resposta em px no canvas (6.5mm * scale * 794/210)
-  const LINE_MM = 6.5;
-  const LINE_PX = Math.round(LINE_MM * SCALE * 794 / PAGE_W); // ~24px @scale2
-
-  // Mínimo de conteúdo para valer uma página extra (~30mm em px)
-  const MIN_SLICE_PX = Math.round(30 * SCALE * 794 / PAGE_W);
-
-  // Calcula pontos de corte alinhados às linhas, evitando fatias minúsculas
-  function calcSlicePoints(canvasH) {
-    if (canvasH <= PAGE_PX + MIN_SLICE_PX) return [canvasH]; // cabe em uma página (com folga)
-    const points = [];
-    let y = 0;
-    while (y < canvasH) {
-      let end = y + SLICE_PX + (y === 0 ? MARGIN_PX : 0);
-      if (end >= canvasH) { points.push(canvasH); break; }
-      // Se o que sobra após este corte for menor que MIN_SLICE_PX, inclui tudo nesta fatia
-      const remaining = canvasH - end;
-      if (remaining < MIN_SLICE_PX) { points.push(canvasH); break; }
-      // Recua até múltiplo de LINE_PX para não cortar linha pela metade
-      const overshoot = end % LINE_PX;
-      if (overshoot > 0) end -= overshoot;
-      points.push(end);
-      y = end;
+    function drawWrapped(pdf, lines, x, y, lineHeight) {
+      lines.forEach((line, i) => pdf.text(line, x, y + i * lineHeight));
     }
-    return points;
-  }
 
-  // Calcula total real de páginas PDF
-  let totalPdfPages = 0;
-  const slicePointsList = canvases.map(canvas => {
-    const pts = calcSlicePoints(canvas.height);
-    totalPdfPages += pts.length;
-    return pts;
-  });
-
-  // Gera o PDF — jsPDF já cria a primeira página automaticamente;
-  // NÃO chamamos addPage() para a primeira questão/fatia.
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  let currentPdfPage = 0;
-
-  try {
-    for (let qi = 0; qi < questions.length; qi++) {
-      const canvas = canvases[qi];
-      const slicePoints = slicePointsList[qi];
-
-      let yStart = 0;
-      for (let s = 0; s < slicePoints.length; s++) {
-        const yEnd   = slicePoints[s];
-        const isFirst = s === 0;
-        const isLast  = s === slicePoints.length - 1;
-
-        currentPdfPage++;
-        // Só chama addPage a partir da segunda página (jsPDF já tem 1 página)
-        if (currentPdfPage > 1) pdf.addPage();
-
-        const topMargin    = isFirst ? 0 : MARGIN_PX;
-        const bottomMargin = isLast  ? 0 : MARGIN_PX;
-        const srcH = yEnd - yStart;
-
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width  = canvas.width;
-        sliceCanvas.height = topMargin + srcH + bottomMargin;
-        const ctx = sliceCanvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(canvas, 0, yStart, canvas.width, srcH, 0, topMargin, canvas.width, srcH);
-
-        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
-        const sliceH_mm = (sliceCanvas.height / canvas.width) * PAGE_W;
-        pdf.addImage(sliceData, 'JPEG', 0, 0, PAGE_W, Math.min(sliceH_mm, PAGE_H));
-        addPageNumber(pdf, currentPdfPage, totalPdfPages, PAGE_W, PAGE_H);
-
-        yStart = yEnd;
+    /* ── Desenha uma caixa de campo (label: valor) ── */
+    function drawField(pdf, label, value, x, y, w, h) {
+      pdf.setDrawColor(80, 80, 80);
+      pdf.setLineWidth(0.3);
+      pdf.rect(x, y, w, h);
+      pdf.setFontSize(8);
+      pdf.setTextColor(65, 65, 65);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(label, x + 2, y + 5.2);
+      if (value) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(18, 18, 18);
+        const maxW = w - pdf.getTextWidth(label) - 4;
+        const val = pdf.splitTextToSize(value, maxW)[0];
+        pdf.text(val, x + 2 + pdf.getTextWidth(label) + 1, y + 5.2);
       }
     }
+
+    /* ── Cabeçalho de campos de identificação ── */
+    function drawIdFields(pdf, hi, y) {
+      const h = BOX_H;
+      const gap = 1;
+      // Linha 1: Nome (2/3) | Matrícula (1/3)
+      const w1a = CW * 2/3 - gap/2, w1b = CW * 1/3 - gap/2;
+      drawField(pdf, 'Nome:', hi.nome, ML, y, w1a, h);
+      drawField(pdf, 'Matrícula:', hi.matricula, ML + w1a + gap, y, w1b, h);
+      y += h + gap;
+      // Linha 2: Disciplina (2/3) | Prof. (1/3)
+      drawField(pdf, 'Disciplina:', hi.disciplina, ML, y, w1a, h);
+      drawField(pdf, 'Prof.:', hi.prof, ML + w1a + gap, y, w1b, h);
+      y += h + gap;
+      // Linha 3: Unid. | Tur. | Data
+      const w3a = CW * 0.4, w3b = CW * 0.25 - gap, w3c = CW - w3a - w3b - gap*2;
+      drawField(pdf, 'Unid.:', hi.unid, ML, y, w3a, h);
+      drawField(pdf, 'Tur.:', hi.tur, ML + w3a + gap, y, w3b, h);
+      drawField(pdf, 'Data:', hi.data, ML + w3a + w3b + gap*2, y, w3c, h);
+      y += h;
+      return y;
+    }
+
+    /* ── Barra "Questão N" ── */
+    function drawQBar(pdf, title, y) {
+      pdf.setFillColor(223, 223, 223);
+      pdf.setDrawColor(223, 223, 223);
+      pdf.roundedRect(ML, y, CW, 7, 1, 1, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(18, 18, 18);
+      pdf.text(title, ML + 3, y + 5);
+      return y + 7;
+    }
+
+    /* ── Logo "wyden" em texto (sem SVG) ── */
+    function drawLogo(pdf, x, y) {
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('wyden', x, y + 7);
+    }
+
+    /* ── Rodapé: linha + numeração ── */
+    function drawFooter(pdf, pageNum, totalPages) {
+      const y = PH - MB + 2;
+      pdf.setDrawColor(65, 65, 65);
+      pdf.setLineWidth(0.4);
+      pdf.line(ML, y, PW - MR, y);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(65, 65, 65);
+      const txt = `Página ${pageNum} de ${totalPages}`;
+      pdf.text(txt, PW - MR - pdf.getTextWidth(txt), y + 4);
+    }
+
+    /* ── Calcula total de páginas antes de desenhar ── */
+    // Para isso, simula o layout de cada questão e conta páginas necessárias
+    function calcPages(q) {
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+      const { pageCount } = simulateQuestion(pdf, q, '', {}, false);
+      return pageCount;
+    }
+
+    function simulateQuestion(pdf, q, headerLabel, hi, draw) {
+      // Retorna { pageCount, pages: [{yStart, yEnd}] }
+      const LH_BODY = 5.2;   // line-height corpo de texto
+      const LH_ITEM = 5.0;   // line-height itens
+      const FS_BODY = 9.5;
+
+      pdf.setFont('helvetica', 'normal');
+
+      // Conteúdo fixo por página de questão
+      // Cabeçalho (logo+título): ~12mm
+      // ID fields (3 linhas × BOX_H + gaps): 3*8 + 2 = 26mm
+      // QBar: 7mm + 4mm gap = 11mm
+      // Rodapé: MB = 14mm reservado
+      const FIXED_TOP = 12 + 26 + 2 + 11; // mm do topo até início do texto
+      const USABLE_H = PH - MT - MB - FIXED_TOP; // espaço para texto + linhas
+
+      // Mede o enunciado
+      pdf.setFontSize(FS_BODY);
+      const paras = q.context.split('\n\n').filter(p => p.trim());
+      let totalTextH = 0;
+      const paraLines = paras.map(para => {
+        const lines = pdf.splitTextToSize(para, CW);
+        totalTextH += lines.length * LH_BODY + 2.5; // +gap entre parágrafos
+        return lines;
+      });
+      if (paras.length) totalTextH -= 2.5; // remove último gap
+
+      // Mede os itens
+      const itemLines = q.items.map(item => {
+        const txt = `${LABELS[q.items.indexOf(item)]}) ${item}`;
+        return pdf.splitTextToSize(txt, CW);
+      });
+      let totalItemH = 0;
+      itemLines.forEach(ls => totalItemH += ls.length * LH_ITEM + 1.5);
+
+      const contentH = totalTextH + 4 + totalItemH + 4; // texto + margens internas
+      const linesH = N_LINES * LINE_H;
+
+      const totalContentH = contentH + linesH;
+
+      // Quantas páginas são necessárias?
+      // Primeira página: USABLE_H disponível
+      // Páginas seguintes: PH - MT - MB
+      const firstPageH = USABLE_H;
+      const contPageH  = PH - MT - MB;
+
+      let pages = 1;
+      if (totalContentH > firstPageH) {
+        const overflow = totalContentH - firstPageH;
+        pages += Math.ceil(overflow / contPageH);
+      }
+      return { pageCount: pages, paraLines, itemLines, totalTextH, totalItemH, LH_BODY, LH_ITEM, FS_BODY };
+    }
+
+    /* ── Conta total de páginas ── */
+    const pageCounts = questions.map(q => {
+      const testPdf = new jsPDF({ unit: 'mm', format: 'a4' });
+      return simulateQuestion(testPdf, q, headerLabel, hi, false).pageCount;
+    });
+    const totalPages = pageCounts.reduce((a, b) => a + b, 0);
+
+    /* ── Desenha o PDF ── */
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    let globalPage = 0;
+
+    questions.forEach((q, qi) => {
+      if (qi > 0) pdf.addPage();
+      globalPage++;
+
+      const sim = simulateQuestion(pdf, q, headerLabel, hi, false);
+      const { paraLines, itemLines, LH_BODY, LH_ITEM, FS_BODY } = sim;
+
+      /* — Cabeçalho da página — */
+      let y = MT;
+
+      // Logo + título
+      drawLogo(pdf, ML, y);
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(18, 18, 18);
+      const titleW = pdf.getTextWidth(headerLabel);
+      pdf.text(headerLabel, PW - MR - titleW, y + 7);
+      y += 12;
+
+      // Campos de identificação
+      y = drawIdFields(pdf, hi, y);
+      y += 2;
+
+      // Barra da questão
+      y = drawQBar(pdf, q.title, y);
+      y += 4;
+
+      /* — Enunciado — */
+      pdf.setFontSize(FS_BODY);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(18, 18, 18);
+
+      paraLines.forEach((lines, pi) => {
+        // Verifica quebra de página
+        const blockH = lines.length * LH_BODY;
+        if (y + blockH > PH - MB) {
+          drawFooter(pdf, globalPage, totalPages);
+          pdf.addPage();
+          globalPage++;
+          y = MT;
+        }
+        pdf.setFontSize(FS_BODY);
+        pdf.setFont('helvetica', 'normal');
+        drawWrapped(pdf, lines, ML, y, LH_BODY);
+        y += blockH + (pi < paraLines.length - 1 ? 2.5 : 0);
+      });
+
+      y += 4;
+
+      /* — Itens — */
+      itemLines.forEach((lines, ii) => {
+        const blockH = lines.length * LH_ITEM;
+        if (y + blockH > PH - MB) {
+          drawFooter(pdf, globalPage, totalPages);
+          pdf.addPage();
+          globalPage++;
+          y = MT;
+        }
+        pdf.setFontSize(FS_BODY);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(18, 18, 18);
+        const fullText = `${LABELS[ii]}) ${q.items[ii]}`;
+        const wrapped = pdf.splitTextToSize(fullText, CW);
+        drawWrapped(pdf, wrapped, ML, y, LH_ITEM);
+        y += blockH + 1.5;
+      });
+
+      y += 4;
+
+      /* — Linhas de resposta — */
+      let isBoxStart = true; // controla se precisamos desenhar borda superior
+
+      for (let l = 0; l < N_LINES; l++) {
+        // Verifica quebra de página
+        if (y + LINE_H > PH - MB) {
+          // Fecha a borda inferior do segmento atual antes de quebrar
+          pdf.setDrawColor(120, 120, 120);
+          pdf.setLineWidth(0.3);
+          pdf.line(ML, y, ML + CW, y); // borda inferior do segmento
+          drawFooter(pdf, globalPage, totalPages);
+          pdf.addPage();
+          globalPage++;
+          y = MT;
+          isBoxStart = true; // nova página = novo segmento, precisa de borda superior
+        }
+
+        // Borda superior do segmento (primeira linha do box ou após quebra)
+        if (isBoxStart) {
+          pdf.setDrawColor(120, 120, 120);
+          pdf.setLineWidth(0.3);
+          pdf.line(ML, y, ML + CW, y); // topo
+          isBoxStart = false;
+        }
+
+        // Bordas laterais da linha atual
+        pdf.setDrawColor(120, 120, 120);
+        pdf.setLineWidth(0.3);
+        pdf.line(ML, y, ML, y + LINE_H);
+        pdf.line(ML + CW, y, ML + CW, y + LINE_H);
+
+        // Linha interna (separadora)
+        const isLast = l === N_LINES - 1;
+        pdf.setDrawColor(isLast ? 120 : 180, isLast ? 120 : 180, isLast ? 120 : 180);
+        pdf.setLineWidth(isLast ? 0.3 : 0.15);
+        pdf.line(ML, y + LINE_H, ML + CW, y + LINE_H);
+
+        y += LINE_H;
+      }
+
+      drawFooter(pdf, globalPage, totalPages);
+    });
 
     pdf.save('prova-enade.pdf');
   } catch (err) {
     alert('Erro ao gerar PDF: ' + err.message);
     console.error(err);
   } finally {
-    document.body.removeChild(offscreen);
     btn.textContent = '⬇ Gerar PDF';
     btn.disabled = false;
   }
-}
-
-/* Escreve o número da página no rodapé do PDF */
-function addPageNumber(pdf, current, total, pageW, pageH) {
-  pdf.setFontSize(8);
-  pdf.setTextColor(65, 65, 65);
-  const text = `Página ${current} de ${total}`;
-  const textW = pdf.getTextWidth(text);
-  pdf.text(text, pageW - 10 - textW, pageH - 6);
 }
 
 function render() { renderEditor(); renderPreview(); }
