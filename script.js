@@ -93,6 +93,35 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function getItemLabel(index, upper = false) {
+  let n = Number(index) || 0;
+  let label = '';
+  do {
+    label = String.fromCharCode(97 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return upper ? label.toUpperCase() : label;
+}
+
+function getAnswerLineAllocation(itemCount) {
+  const count = Math.max(1, Number(itemCount) || 1);
+  const base = Math.floor(ANSWER_LINES / count);
+  const remainder = ANSWER_LINES % count;
+  return Array.from({ length: count }, (_, index) => Math.max(1, base + (index < remainder ? 1 : 0)));
+}
+
+function buildAnswerAreaHTML(itemCount) {
+  return getAnswerLineAllocation(itemCount).map((lineCount, index) => {
+    const linesHtml = Array.from({ length: lineCount }, () => '<div class="answer-line"></div>').join('');
+    return `
+      <div class="answer-item-row">
+        <div class="answer-item-cell">${getItemLabel(index, true)}</div>
+        <div class="answer-lines-cell">${linesHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function plainTextToContextHtml(str) {
   const text = String(str || '').trim();
   if (!text) return '';
@@ -562,8 +591,8 @@ function renderEditor() {
           <label class="field-label" style="margin-top:10px;">Itens da questão</label>
           ${q.items.map((item, ii) => `
             <div class="item-row">
-              <span class="item-badge">${LABELS[ii].toUpperCase()}</span>
-              <textarea rows="1" placeholder="Texto do item ${LABELS[ii].toUpperCase()}" oninput="onItemTextareaInput(this, ${q.id}, ${ii})">${escHtml(item)}</textarea>
+              <span class="item-badge">${getItemLabel(ii, true)}</span>
+              <textarea rows="1" placeholder="Texto do item ${getItemLabel(ii, true)}" oninput="onItemTextareaInput(this, ${q.id}, ${ii})">${escHtml(item)}</textarea>
             </div>
           `).join('')}
         </div>
@@ -649,12 +678,10 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
     : (isPreview ? '<p style="color:#000;font-style:italic;">Nenhum contexto inserido.</p>' : '');
 
   const itemsHtml = q.items.map((item, ii) =>
-    `<div class="q-item"><span class="q-item-label">${LABELS[ii]})</span> ${escHtml(item)}</div>`
+    `<div class="q-item"><span class="q-item-label">${getItemLabel(ii)})</span> ${escHtml(item)}</div>`
   ).join('');
 
-  const linesHtml = Array(ANSWER_LINES).fill(0)
-    .map(() => `<div class="answer-line"></div>`)
-    .join('');
+  const answerAreaHtml = buildAnswerAreaHTML(q.items.length);
 
   const idBoxStyle = 'border:0.75px solid #000;border-radius:3px;padding:5px 10px;font-size:11pt;color:#000;line-height:1.4;min-height:28px;';
   const studentLabel = formatStudentLabel(hi);
@@ -685,7 +712,7 @@ function buildPageHTML(q, qi, total, headerLabel, isPreview, hi) {
     <div class="q-bar">${escHtml(q.title)}</div>
     <div class="q-context" data-q-id="${q.id}">${parasHtml}</div>
     <div class="q-items">${itemsHtml}</div>
-    <div class="answer-area">${linesHtml}</div>
+    <div class="answer-area">${answerAreaHtml}</div>
     ${isPreview ? `
     <div class="doc-footer">
       <div class="footer-line"></div>
@@ -1380,7 +1407,7 @@ async function gerarPDF(exportOptions = {}) {
 
       // Mede os itens
       const itemLines = q.items.map(item => {
-        const txt = `${LABELS[q.items.indexOf(item)]}) ${item}`;
+        const txt = `${getItemLabel(q.items.indexOf(item))}) ${item}`;
         return pdf.splitTextToSize(txt, CW);
       });
       let totalItemH = 0;
@@ -1477,7 +1504,7 @@ async function gerarPDF(exportOptions = {}) {
         pdf.setFontSize(FS_BODY);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(0, 0, 0);
-        const fullText = `${LABELS[ii]}) ${q.items[ii]}`;
+        const fullText = `${getItemLabel(ii)}) ${q.items[ii]}`;
         const wrapped = pdf.splitTextToSize(fullText, CW);
         drawWrapped(pdf, wrapped, ML, y, LH_ITEM);
         y += blockH + 1.5;
@@ -1486,44 +1513,63 @@ async function gerarPDF(exportOptions = {}) {
       y += 4;
 
       /* — Linhas de resposta — */
+      const ITEM_COL_W = 12;
+      const ANSWER_X = ML + ITEM_COL_W;
+      const ANSWER_BORDER_W = 0.3;
+      const ANSWER_DIVIDER_W = 0.36;
+      const allocations = getAnswerLineAllocation(q.items.length);
       let isBoxStart = true; // controla se precisamos desenhar borda superior
 
-      for (let l = 0; l < N_LINES; l++) {
-        // Verifica quebra de página
-        if (y + LINE_H > PH - MB) {
-          // Fecha a borda inferior do segmento atual antes de quebrar
-          pdf.setDrawColor(120, 120, 120);
-          pdf.setLineWidth(0.3);
-          pdf.line(ML, y, ML + CW, y); // borda inferior do segmento
-          drawFooter(pdf, globalPage, totalPages);
-          pdf.addPage();
-          globalPage++;
-          y = MT;
-          isBoxStart = true; // nova página = novo segmento, precisa de borda superior
+      allocations.forEach((lineCount, ii) => {
+        const itemBlockH = lineCount * LINE_H;
+        for (let l = 0; l < lineCount; l++) {
+          if (y + LINE_H > PH - MB) {
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(ANSWER_BORDER_W);
+            pdf.line(ML, y, ML + CW, y);
+            drawFooter(pdf, globalPage, totalPages);
+            pdf.addPage();
+            globalPage++;
+            y = MT;
+            isBoxStart = true;
+          }
+
+          if (ii % 2 === 1) {
+            pdf.setFillColor(242, 242, 242);
+            pdf.rect(ML, y, CW, LINE_H, 'F');
+          }
+
+          if (isBoxStart) {
+            pdf.setDrawColor(0, 0, 0);
+            pdf.setLineWidth(ANSWER_BORDER_W);
+            pdf.line(ML, y, ML + CW, y);
+            isBoxStart = false;
+          }
+
+          pdf.setDrawColor(0, 0, 0);
+          pdf.setLineWidth(ANSWER_BORDER_W);
+          pdf.line(ML, y, ML, y + LINE_H);
+          pdf.setLineWidth(ANSWER_DIVIDER_W);
+          pdf.line(ANSWER_X, y, ANSWER_X, y + LINE_H);
+          pdf.setLineWidth(ANSWER_BORDER_W);
+          pdf.line(ML + CW, y, ML + CW, y + LINE_H);
+
+          if (l === 0) {
+            const label = getItemLabel(ii, true);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(9);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(label, ML + (ITEM_COL_W - pdf.getTextWidth(label)) / 2, y + itemBlockH / 2 + 1.5);
+          }
+
+          const isItemEnd = l === lineCount - 1;
+          const x1 = isItemEnd ? ML : ANSWER_X;
+          pdf.setDrawColor(0, 0, 0);
+          pdf.setLineWidth(ANSWER_BORDER_W);
+          pdf.line(x1, y + LINE_H, ML + CW, y + LINE_H);
+          y += LINE_H;
         }
-
-        // Borda superior do segmento (primeira linha do box ou após quebra)
-        if (isBoxStart) {
-          pdf.setDrawColor(120, 120, 120);
-          pdf.setLineWidth(0.3);
-          pdf.line(ML, y, ML + CW, y); // topo
-          isBoxStart = false;
-        }
-
-        // Bordas laterais da linha atual
-        pdf.setDrawColor(120, 120, 120);
-        pdf.setLineWidth(0.3);
-        pdf.line(ML, y, ML, y + LINE_H);
-        pdf.line(ML + CW, y, ML + CW, y + LINE_H);
-
-        // Linha interna (separadora)
-        const isLast = l === N_LINES - 1;
-        pdf.setDrawColor(isLast ? 120 : 180, isLast ? 120 : 180, isLast ? 120 : 180);
-        pdf.setLineWidth(isLast ? 0.3 : 0.15);
-        pdf.line(ML, y + LINE_H, ML + CW, y + LINE_H);
-
-        y += LINE_H;
-      }
+      });
 
       drawFooter(pdf, globalPage, totalPages);
     });
