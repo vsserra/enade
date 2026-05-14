@@ -196,6 +196,12 @@ function removeQuestion(id) {
 function onTitleChange(id, val)    { questions.find(q => q.id === id).title = val;       renderPreview(); }
 function onContextChange(id, val)  { questions.find(q => q.id === id).context = sanitizeContextHtml(val); renderPreview(); }
 function onItemChange(qId, i, val) { questions.find(q => q.id === qId).items[i] = val;   renderPreview(); }
+function addItem(qId) {
+  const question = questions.find(q => q.id === qId);
+  if (!question) return;
+  question.items.push('');
+  render();
+}
 
 function saveContextSelection(id) {
   const sel = window.getSelection();
@@ -595,6 +601,7 @@ function renderEditor() {
               <textarea rows="1" placeholder="Texto do item ${getItemLabel(ii, true)}" oninput="onItemTextareaInput(this, ${q.id}, ${ii})">${escHtml(item)}</textarea>
             </div>
           `).join('')}
+          <button type="button" class="btn-add-item" onclick="addItem(${q.id})">+ Adicionar item</button>
         </div>
       </div>
     </div>
@@ -1406,8 +1413,8 @@ async function gerarPDF(exportOptions = {}) {
       if (paras.length) totalTextH -= 2.5; // remove último gap
 
       // Mede os itens
-      const itemLines = q.items.map(item => {
-        const txt = `${getItemLabel(q.items.indexOf(item))}) ${item}`;
+      const itemLines = q.items.map((item, ii) => {
+        const txt = `${getItemLabel(ii)}) ${item}`;
         return pdf.splitTextToSize(txt, CW);
       });
       let totalItemH = 0;
