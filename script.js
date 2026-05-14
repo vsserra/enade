@@ -202,6 +202,13 @@ function addItem(qId) {
   question.items.push('');
   render();
 }
+function removeItem(qId, index) {
+  const question = questions.find(q => q.id === qId);
+  if (!question) return;
+  if (question.items.length === 1) return alert('A questão precisa de ao menos um item.');
+  question.items.splice(index, 1);
+  render();
+}
 
 function saveContextSelection(id) {
   const sel = window.getSelection();
@@ -599,6 +606,7 @@ function renderEditor() {
             <div class="item-row">
               <span class="item-badge">${getItemLabel(ii, true)}</span>
               <textarea rows="1" placeholder="Texto do item ${getItemLabel(ii, true)}" oninput="onItemTextareaInput(this, ${q.id}, ${ii})">${escHtml(item)}</textarea>
+              <button type="button" class="btn-rm-item" title="Remover item ${getItemLabel(ii, true)}" onclick="removeItem(${q.id}, ${ii})">×</button>
             </div>
           `).join('')}
           <button type="button" class="btn-add-item" onclick="addItem(${q.id})">+ Adicionar item</button>

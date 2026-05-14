@@ -103,6 +103,19 @@ body { font-family: Arial, Helvetica, sans-serif; background: var(--ui-bg); colo
   outline: none; resize: none; min-height: 28px; overflow: hidden;
 }
 .item-row textarea:focus { border-color: var(--gold); }
+.btn-rm-item {
+  align-self: stretch;
+  background: none;
+  border: none;
+  color: var(--red);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  opacity: .7;
+  padding: 0 3px;
+}
+.btn-rm-item:hover { opacity: 1; }
 .btn-add-item {
   width: 100%;
   background: none;
