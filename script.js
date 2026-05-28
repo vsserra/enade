@@ -82,6 +82,8 @@ let questions = [
 ];
 
 let nextId = 3;
+const SAVE_KEY = 'enade-draft';
+let _saveTimer = null;
 const contextSelections = {};
 let activeContextImage = null;
 let activeImageResize = null;
@@ -174,6 +176,80 @@ function sanitizeContextHtml(html) {
   const output = document.createElement('div');
   template.content.childNodes.forEach(child => output.appendChild(cleanNode(child)));
   return output.innerHTML;
+}
+
+/* ── Auto-save (localStorage) ── */
+function scheduleSave() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(saveState, 1000);
+}
+
+function saveState() {
+  try {
+    const v = (id) => document.getElementById(id)?.value ?? '';
+    const state = {
+      version: 1,
+      questions,
+      nextId,
+      header: {
+        title:      v('input-header'),
+        nome:       v('hi-nome'),
+        matricula:  v('hi-matricula'),
+        disciplina: v('hi-disciplina'),
+        prof:       v('hi-prof'),
+        unid:       v('hi-unid'),
+        tur:        v('hi-tur'),
+        data:       v('hi-data'),
+      },
+      students: v('students-list'),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    const el = document.getElementById('save-status');
+    if (el) {
+      const now = new Date();
+      el.textContent = `Salvo às ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+  } catch (_) {
+    // localStorage indisponível (ex: Safari ITP dentro de iframe) — ignora silenciosamente
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    if (!state || state.version !== 1) return false;
+
+    if (Array.isArray(state.questions) && state.questions.length > 0) {
+      questions = state.questions;
+      nextId = typeof state.nextId === 'number'
+        ? state.nextId
+        : Math.max(...state.questions.map(q => q.id)) + 1;
+    }
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+    if (state.header) {
+      set('input-header', state.header.title);
+      set('hi-nome',       state.header.nome);
+      set('hi-matricula',  state.header.matricula);
+      set('hi-disciplina', state.header.disciplina);
+      set('hi-prof',       state.header.prof);
+      set('hi-unid',       state.header.unid);
+      set('hi-tur',        state.header.tur);
+      set('hi-data',       state.header.data);
+    }
+    if (state.students != null) set('students-list', state.students);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function clearDraft() {
+  if (!confirm('Apagar o rascunho salvo e começar do zero?')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
+  location.reload();
 }
 
 /* ── Tab switching ── */
@@ -751,6 +827,7 @@ function renderPreview() {
     `<div class="page-a4" id="preview-page-${qi}">${buildPageHTML(q, qi, total, headerLabel, true, hi)}</div>`
   ).join('');
   setupPreviewImageEditors();
+  scheduleSave();
 }
 
 /* ════════════════════════════════════════════════════════
@@ -1628,4 +1705,5 @@ function gerarPDFAlunos() {
 }
 
 function render() { renderEditor(); renderPreview(); updateStudentFieldLocks(); }
+loadState();
 render();
